@@ -1,0 +1,122 @@
+---
+# thanks: https://github.com/kairen/kubeadm-ansible/blob/master/reset-site.yaml
+#         https://v1-13.docs.kubernetes.io/docs/setup/independent/create-cluster-kubeadm/#tear-down
+#         https://stackoverflow.com/questions/53525975/kubernetes-error-uploading-crisocket-timed-out-waiting-for-the-condition
+
+- name: Drain node
+  shell: 'kubectl drain {{ inventory_hostname }} --delete-local-data --force --ignore-daemonsets'
+  ignore_errors: True
+  delegate_to: "{{ groups['k8smasters'][0] }}"
+
+- name: Delete node
+  shell: 'kubectl delete node {{ inventory_hostname }}'
+  ignore_errors: True
+  delegate_to: "{{ groups['k8smasters'][0] }}"
+
+- name: Reset Kubernetes component
+  become: yes
+  shell: "kubeadm reset --ignore-preflight-errors=all --force"
+  ignore_errors: True
+
+- name: Delete flannel.1 interface
+  become: yes
+  command: ip link delete flannel.1
+  ignore_errors: True
+  when: '"flannel.1" in ansible_interfaces'
+
+- name: Delete cni0 interface
+  become: yes
+  command: ip link delete cni0
+  ignore_errors: True
+  when: '"cni0" in ansible_interfaces'
+
+- name: Get held packages
+  become: yes
+  command: apt-mark showhold
+  register: held_packages
+  changed_when: false
+
+- name: unhold containerd.io
+  become: yes
+  command: apt-mark unhold containerd.io
+  when: '"containerd.io" in held_packages.stdout'
+
+- name: unhold docker-ce
+  become: yes
+  command: apt-mark unhold docker-ce
+  when: '"docker-ce" in held_packages.stdout'
+
+- name: unhold docker-ce-cli
+  become: yes
+  command: apt-mark unhold docker-ce-cli
+  when: '"docker-ce-cli" in held_packages.stdout'
+
+- name: unhold kubeadm
+  become: yes
+  command: apt-mark unhold kubeadm
+  when: '"kubeadm" in held_packages.stdout'
+
+- name: unhold kubectl
+  become: yes
+  command: apt-mark unhold kubectl
+  when: '"kubectl" in held_packages.stdout'
+
+- name: unhold kubelet
+  become: yes
+  command: apt-mark unhold kubelet
+  when: '"kubelet" in held_packages.stdout'
+
+- name: unhold kubernetes-cni
+  become: yes
+  command: apt-mark unhold kubernetes-cni
+  when: '"kubernetes-cni" in held_packages.stdout'
+
+- name: Remove apt packages
+  become: yes
+  apt:
+    name: ['kubernetes-cli','kubelet','kubectl','kubeadm','docker-ce-cli','docker-ce','contained.io']
+    state: absent
+    purge: yes
+    autoremove: yes
+
+- name: Remove .kube dir
+  become: yes
+  file:
+    path: "{{ ansible_env.HOME }}/.kube"
+    state: absent
+
+- name: Remove etc kube dir
+  become: yes
+  file:
+    path: /etc/kubernetes
+    state: absent
+
+- name: Remove libexec kube dir
+  become: yes
+  file:
+    path: /usr/libexec/kubernetes/
+    state: absent
+
+- name: Remove etcd dir
+  become: yes
+  file:
+    path: /var/lib/etcd
+    state: absent
+
+- name: Remove cni dir
+  become: yes
+  file:
+    path: /var/lib/cni
+    state: absent
+
+- name: Flush iptables
+  become: yes
+  shell: 'iptables -F && iptables -t nat -F && iptables -t mangle -F && iptables -X'
+
+#- name: Flush virtual host tables
+#  become: yes
+#  shell: 'ipvsadm -C'
+
+- name: reboot
+  become: yes
+  reboot:

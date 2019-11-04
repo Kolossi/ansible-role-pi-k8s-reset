@@ -1,0 +1,21 @@
+galaxy_info:
+  author: Paul Sweeney
+  description: Reset and uninstall Kubernetes & docker on Raspberry Pi 4s
+  company: Kolossi
+
+  license: GPL-3.0-only
+
+  min_ansible_version: 2.4
+
+   platforms:
+   - name: Raspbian Buster
+     versions:
+     - 2019-09-26
+
+  galaxy_tags: 
+    - raspberry
+    - pi
+    - k8s
+    - kubernetes
+
+dependencies: []

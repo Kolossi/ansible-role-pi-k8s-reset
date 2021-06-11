@@ -78,7 +78,7 @@
 - name: Remove apt packages
   become: yes
   apt:
-    name: ['kubernetes-cli','kubelet','kubectl','kubeadm','docker-ce-cli','docker-ce','contained.io']
+    name: ['kubernetes-cni','kubelet','kubectl','kubeadm','docker-ce-cli','docker-ce','contained.io']
     state: absent
     purge: yes
     autoremove: yes

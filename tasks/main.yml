@@ -3,15 +3,19 @@
 #         https://v1-13.docs.kubernetes.io/docs/setup/independent/create-cluster-kubeadm/#tear-down
 #         https://stackoverflow.com/questions/53525975/kubernetes-error-uploading-crisocket-timed-out-waiting-for-the-condition
 
+- name: "get target masters"
+  set_fact:
+    target_masters: "{{ groups['k8smasters'] | intersect(play_hosts) }}"
+
 - name: Drain node
   shell: 'kubectl drain {{ inventory_hostname }} --delete-local-data --force --ignore-daemonsets'
   ignore_errors: True
-  delegate_to: "{{ groups['k8smasters'][0] }}"
+  delegate_to: "{{ target_masters[0] }}"
 
 - name: Delete node
   shell: 'kubectl delete node {{ inventory_hostname }}'
   ignore_errors: True
-  delegate_to: "{{ groups['k8smasters'][0] }}"
+  delegate_to: "{{ target_masters[0] }}"
 
 - name: Reset Kubernetes component
   become: yes
